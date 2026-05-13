@@ -3,4 +3,7 @@
     <color name="askbar_panel">#202124</color>
     <color name="askbar_accent">#40C463</color>
     <color name="askbar_text">#F5F5F5</color>
+    <color name="askbar_bar">#242424</color>
+    <color name="askbar_bar_stroke">#383838</color>
+    <color name="askbar_muted">#C7C7C7</color>
 </resources>

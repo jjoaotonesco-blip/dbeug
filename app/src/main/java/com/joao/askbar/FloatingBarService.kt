@@ -38,6 +38,7 @@ class FloatingBarService : Service() {
     private var resultText: TextView? = null
     private var thinkingToggle: TextView? = null
     private var thinkingText: TextView? = null
+    private var statusText: TextView? = null
     private var progress: ProgressBar? = null
 
     override fun onCreate() {
@@ -82,28 +83,42 @@ class FloatingBarService : Service() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(10), dp(8), dp(10), dp(10))
-            setBackgroundColor(Color.rgb(30, 31, 34))
+            setPadding(dp(10), 0, dp(10), 0)
         }
 
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            background = getDrawable(com.joao.askbar.R.drawable.askbar_shell)
         }
 
         val input = EditText(this).apply {
-            hint = "Perguntar..."
+            hint = "Pergunte alguma coisa"
             setSingleLine(false)
             minLines = 1
             maxLines = 3
             setTextColor(Color.WHITE)
-            setHintTextColor(Color.rgb(180, 180, 180))
-            setBackgroundColor(Color.rgb(45, 46, 50))
-            setPadding(dp(10), 0, dp(10), 0)
+            textSize = 16f
+            setHintTextColor(Color.rgb(198, 198, 198))
+            background = getDrawable(com.joao.askbar.R.drawable.askbar_input_bg)
+            setPadding(dp(6), 0, dp(8), 0)
+        }
+
+        val add = TextView(this).apply {
+            text = "+"
+            textSize = 30f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(235, 235, 235))
         }
 
         val send = Button(this).apply {
-            text = "Enviar"
+            text = ">"
+            textSize = 16f
+            setTextColor(Color.rgb(20, 20, 20))
+            background = getDrawable(com.joao.askbar.R.drawable.askbar_send_button)
+            minWidth = 0
+            minHeight = 0
+            setPadding(0, 0, 0, 0)
             setOnClickListener {
                 val prompt = input.text.toString().trim()
                 if (prompt.isBlank()) return@setOnClickListener
@@ -111,11 +126,22 @@ class FloatingBarService : Service() {
             }
         }
 
-        val close = Button(this).apply {
-            text = "X"
+        val mic = TextView(this).apply {
+            text = "|"
+            textSize = 18f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+        }
+
+        statusText = TextView(this).apply {
+            text = "Ready"
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(210, 210, 210))
             setOnClickListener {
-                removeOverlay()
-                stopSelf()
+                if (thinkingToggle?.visibility == View.VISIBLE) {
+                    thinkingToggle?.performClick()
+                }
             }
         }
 
@@ -127,7 +153,7 @@ class FloatingBarService : Service() {
         resultText = TextView(this).apply {
             textSize = 14f
             setTextColor(Color.WHITE)
-            setPadding(dp(2), dp(8), dp(2), 0)
+            background = getDrawable(com.joao.askbar.R.drawable.askbar_answer_bg)
             visibility = View.GONE
             setOnLongClickListener {
                 copyToClipboard(text.toString())
@@ -140,7 +166,7 @@ class FloatingBarService : Service() {
             text = "> Pensamento"
             textSize = 13f
             setTextColor(Color.rgb(180, 210, 190))
-            setPadding(dp(2), dp(8), dp(2), 0)
+            setPadding(dp(14), dp(8), dp(2), 0)
             visibility = View.GONE
             setOnClickListener {
                 val expanded = thinkingText?.visibility == View.VISIBLE
@@ -152,7 +178,7 @@ class FloatingBarService : Service() {
         thinkingText = TextView(this).apply {
             textSize = 13f
             setTextColor(Color.rgb(205, 205, 205))
-            setPadding(dp(10), dp(4), dp(2), 0)
+            background = getDrawable(com.joao.askbar.R.drawable.askbar_answer_bg)
             visibility = View.GONE
             setOnLongClickListener {
                 copyToClipboard(text.toString())
@@ -161,17 +187,19 @@ class FloatingBarService : Service() {
             }
         }
 
-        row.addView(input, LinearLayout.LayoutParams(0, dp(48), 1f))
-        row.addView(send, LinearLayout.LayoutParams(dp(88), dp(48)).withLeftMargin(dp(8)))
-        row.addView(close, LinearLayout.LayoutParams(dp(48), dp(48)).withLeftMargin(dp(6)))
-        root.addView(row)
+        row.addView(add, LinearLayout.LayoutParams(dp(38), dp(52)))
+        row.addView(input, LinearLayout.LayoutParams(0, dp(52), 1f))
+        row.addView(statusText, LinearLayout.LayoutParams(dp(104), dp(52)))
+        row.addView(mic, LinearLayout.LayoutParams(dp(36), dp(52)))
+        row.addView(send, LinearLayout.LayoutParams(dp(42), dp(42)).withLeftMargin(dp(4)))
+        root.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(58)))
         root.addView(progress, LinearLayout.LayoutParams(dp(42), dp(42)).withTopMargin(dp(6)))
-        root.addView(resultText)
+        root.addView(resultText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).withTopMargin(dp(8)))
         root.addView(thinkingToggle)
-        root.addView(thinkingText)
+        root.addView(thinkingText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).withTopMargin(dp(6)))
 
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
+            resources.displayMetrics.widthPixels - dp(20),
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
@@ -205,6 +233,7 @@ class FloatingBarService : Service() {
         }
 
         progress?.visibility = View.VISIBLE
+        statusText?.text = "Thinking v"
         setResult("")
 
         Thread {
@@ -213,6 +242,7 @@ class FloatingBarService : Service() {
 
             android.os.Handler(mainLooper).post {
                 progress?.visibility = View.GONE
+                statusText?.text = "Ready"
                 setResult(response)
             }
         }.start()

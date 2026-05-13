@@ -36,6 +36,8 @@ class FloatingBarService : Service() {
     private lateinit var windowManager: WindowManager
     private var overlay: View? = null
     private var resultText: TextView? = null
+    private var thinkingToggle: TextView? = null
+    private var thinkingText: TextView? = null
     private var progress: ProgressBar? = null
 
     override fun onCreate() {
@@ -134,12 +136,39 @@ class FloatingBarService : Service() {
             }
         }
 
+        thinkingToggle = TextView(this).apply {
+            text = "> Pensamento"
+            textSize = 13f
+            setTextColor(Color.rgb(180, 210, 190))
+            setPadding(dp(2), dp(8), dp(2), 0)
+            visibility = View.GONE
+            setOnClickListener {
+                val expanded = thinkingText?.visibility == View.VISIBLE
+                thinkingText?.visibility = if (expanded) View.GONE else View.VISIBLE
+                text = if (expanded) "> Pensamento" else "v Pensamento"
+            }
+        }
+
+        thinkingText = TextView(this).apply {
+            textSize = 13f
+            setTextColor(Color.rgb(205, 205, 205))
+            setPadding(dp(10), dp(4), dp(2), 0)
+            visibility = View.GONE
+            setOnLongClickListener {
+                copyToClipboard(text.toString())
+                Toast.makeText(this@FloatingBarService, "Pensamento copiado", Toast.LENGTH_SHORT).show()
+                true
+            }
+        }
+
         row.addView(input, LinearLayout.LayoutParams(0, dp(48), 1f))
         row.addView(send, LinearLayout.LayoutParams(dp(88), dp(48)).withLeftMargin(dp(8)))
         row.addView(close, LinearLayout.LayoutParams(dp(48), dp(48)).withLeftMargin(dp(6)))
         root.addView(row)
         root.addView(progress, LinearLayout.LayoutParams(dp(42), dp(42)).withTopMargin(dp(6)))
         root.addView(resultText)
+        root.addView(thinkingToggle)
+        root.addView(thinkingText)
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -226,8 +255,32 @@ class FloatingBarService : Service() {
     }
 
     private fun setResult(text: String) {
-        resultText?.text = text
-        resultText?.visibility = if (text.isBlank()) View.GONE else View.VISIBLE
+        val parsed = parseResponse(text)
+        resultText?.text = parsed.answer
+        resultText?.visibility = if (parsed.answer.isBlank()) View.GONE else View.VISIBLE
+
+        thinkingToggle?.text = "> Pensamento"
+        thinkingToggle?.visibility = if (parsed.thinking.isBlank()) View.GONE else View.VISIBLE
+        thinkingText?.text = parsed.thinking
+        thinkingText?.visibility = View.GONE
+    }
+
+    private fun parseResponse(text: String): ParsedResponse {
+        val thinkBlock = Regex(
+            pattern = "<think>(.*?)</think>",
+            options = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        ).find(text)
+
+        if (thinkBlock != null) {
+            val thinking = thinkBlock.groupValues[1].trim()
+            val answer = text.replace(thinkBlock.value, "").trim()
+            return ParsedResponse(
+                answer = answer.ifBlank { "Sem resposta final. Abre o pensamento para ver o que o modelo devolveu." },
+                thinking = thinking
+            )
+        }
+
+        return ParsedResponse(answer = text.trim(), thinking = "")
     }
 
     private fun copyToClipboard(text: String) {
@@ -305,4 +358,9 @@ class FloatingBarService : Service() {
     companion object {
         private const val CHANNEL_ID = "ask_bar_overlay"
     }
+
+    private data class ParsedResponse(
+        val answer: String,
+        val thinking: String
+    )
 }

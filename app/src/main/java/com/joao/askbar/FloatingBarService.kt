@@ -134,7 +134,7 @@ class FloatingBarService : Service() {
         }
 
         statusText = TextView(this).apply {
-            text = "Ready"
+            text = "Pronto"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(Color.rgb(210, 210, 210))
@@ -233,7 +233,7 @@ class FloatingBarService : Service() {
         }
 
         progress?.visibility = View.VISIBLE
-        statusText?.text = "Thinking v"
+        statusText?.text = "A pensar v"
         setResult("")
 
         Thread {
@@ -242,7 +242,7 @@ class FloatingBarService : Service() {
 
             android.os.Handler(mainLooper).post {
                 progress?.visibility = View.GONE
-                statusText?.text = "Ready"
+                statusText?.text = "Pronto"
                 setResult(response)
             }
         }.start()
